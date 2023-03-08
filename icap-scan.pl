@@ -57,8 +57,8 @@ my %opts;
 getopts('hpv', \%opts) or pod2usage(2);
 pod2usage(0) if $opts{h};
 my $verbose = $opts{v};
-my $use_preview = $opts{p};
-my $preview_size = undef;
+my $use_preview = $opts{p};   # Use preview mode if supported by ICAP server
+my $preview_size = undef;     # Maximum preview size supported by ICAP server as reported by OPTIONS request
 
 # extract host and port from URL on command line
 my $url = shift; defined($url) && $url =~ m{^icap://([^/:]+)(?::(\d+))?} or pod2usage("Invalid URL");
@@ -132,7 +132,7 @@ sub scan_file {
     my $icap_request = "RESPMOD $url ICAP/1.0\r\n" .
         "Host: $icap_host\r\n" .
         "Allow: 204\r\n" .
-        "Preview: $preview_size\r\n" .
+        (defined($preview_size) && $use_preview ? "Preview: $preview_size\r\n" : '').
         "Encapsulated: $encapsulated\r\n" .
         "\r\n";
     send_data($icap_request);
@@ -141,7 +141,7 @@ sub scan_file {
     my $threat_info;
     my $icap_status;
     while ( !defined($icap_status) || $icap_status == 100 ) {
-        if ( $use_preview && !defined($icap_status) ) {
+        if ( defined($preview_size) && $use_preview && !defined($icap_status) ) {
             # Send file contents in chunks up to the preview size
             chunk_send($file_handle,$preview_size);
         } else {
